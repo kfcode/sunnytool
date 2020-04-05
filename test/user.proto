@@ -1,0 +1,21 @@
+syntax = "proto3";
+
+package example;
+
+// LD
+message LD
+{
+    uint32 ip = 1;         // LD的IP
+}
+// 集群
+message Set
+{
+     uint32 id                                     = 1;     // SET的id
+     string name                                   = 2;     // SET名字
+}
+
+service SearchService {
+
+  rpc Search (LD) returns (Set);
+
+}
