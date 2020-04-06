@@ -1,4 +1,4 @@
-module rpcxtools/rpcxtools
+module github.com/kfcode/sunnytool
 
 go 1.12
 

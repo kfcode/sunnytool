@@ -1,6 +1,6 @@
 #!/bin/bash
 
-name="protoc-gen-protorpcxtools"
+name="protoc-gen-sunnytool"
 
 go build -o $name
 

@@ -30,4 +30,5 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 package main
-import _"rpcxtools/rpcxtools/grpc"
+
+import _ "github.com/kfcode/sunnytool/grpc"

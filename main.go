@@ -50,11 +50,11 @@ package main
 
 import (
 	"fmt"
-	"github.com/golang/protobuf/proto"
 	"io/ioutil"
-	"log"
 	"os"
-	"rpcxtools/rpcxtools/generator"
+
+	"github.com/golang/protobuf/proto"
+	"github.com/kfcode/sunnytool/generator"
 )
 
 func main() {
@@ -70,11 +70,18 @@ func main() {
 		g.Fail("no files to generate")
 	}
 	g.CommandLineParameters(g.Request.GetParameter())
-	log.Print("protoc-gen-go: error:", g.Param)
+
 	platform, ok := g.Param["p"]
-	if !ok || ( platform != "cli" && platform != "svr") {
+	if !ok || (platform != "cli" && platform != "svr") {
 		g.Fail("can not find -p parameter")
 	}
+	pkg, ok := g.Param["pkg"]
+	if platform == "cli" {
+		if !ok || len(pkg) == 0 {
+			g.Fail("generate for client code, can not find -pkg parameter")
+		}
+	}
+
 	if platform == "cli" {
 		err = GenCliGoGenFiles(g, data)
 		if err != nil {
@@ -82,11 +89,11 @@ func main() {
 			return
 		}
 		/*
-		err = GenCliFile(g, data)
-		if err != nil {
-			fmt.Printf("reading input err:%v", err)
-			return
-		}*/
+			err = GenCliFile(g, data)
+			if err != nil {
+				fmt.Printf("reading input err:%v", err)
+				return
+			}*/
 		return
 	}
 	err = GenSvrGoGenFiles(g, data)
@@ -95,11 +102,11 @@ func main() {
 		return
 	}
 	/*
-	err = GenServiceFiles(g, data)
-	if err != nil {
-		fmt.Printf("reading input err:%v", err)
-		return
-	}*/
+		err = GenServiceFiles(g, data)
+		if err != nil {
+			fmt.Printf("reading input err:%v", err)
+			return
+		}*/
 	return
 }
 

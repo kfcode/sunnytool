@@ -34,7 +34,7 @@ package generator
 import (
 	"testing"
 
-	"rpcxtools/rpcxtools/descriptor"
+	"github.com/kfcode/sunnytool/descriptor"
 )
 
 func TestCamelCase(t *testing.T) {

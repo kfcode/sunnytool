@@ -39,8 +39,8 @@ import (
 	"strconv"
 	"strings"
 
-	pb "github.com/golang/protobuf/protoc-gen-go/descriptor"
-	"rpcxtools/rpcxtools/generator"
+	pb "github.com/kfcode/sunnytool/descriptor"
+	"github.com/kfcode/sunnytool/generator"
 )
 
 // generatedCodeVersion indicates a version of the generated code.

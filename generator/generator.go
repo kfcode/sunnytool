@@ -58,11 +58,10 @@ import (
 	"unicode/utf8"
 
 	"github.com/golang/protobuf/proto"
-	"rpcxtools/rpcxtools/generator/internal/remap"
+	"github.com/kfcode/sunnytool/generator/internal/remap"
 
-	"github.com/golang/protobuf/protoc-gen-go/descriptor"
-	plugin "rpcxtools/rpcxtools/plugin"
-
+	"github.com/kfcode/sunnytool/descriptor"
+	plugin "github.com/kfcode/sunnytool/plugin"
 )
 
 // generatedCodeVersion indicates a version of the generated code.
@@ -346,7 +345,7 @@ func (d *FileDescriptor) addExport(obj Object, sym symbol) {
 	d.exported[obj] = append(d.exported[obj], sym)
 }
 
-func getPlatFromDir (plat map[string]string) string {
+func getPlatFromDir(plat map[string]string) string {
 	platform, ok := plat["p"]
 	if ok && platform == "cli" {
 		return "genCli"
@@ -358,8 +357,8 @@ func getPlatFromDir (plat map[string]string) string {
 }
 
 func osCreateDir(path string) {
-	err := os.MkdirAll(path,os.ModePerm)
-	if err != nil{
+	err := os.MkdirAll(path, os.ModePerm)
+	if err != nil {
 		log.Print("osCreateDir error:", err)
 		os.Exit(1)
 	}

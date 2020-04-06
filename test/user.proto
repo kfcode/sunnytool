@@ -15,7 +15,6 @@ message Set
 }
 
 service SearchService {
-
   rpc Search (LD) returns (Set);
 
 }
