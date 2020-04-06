@@ -11,10 +11,10 @@
                               usercli.go
                               user.pb.go
                              
-protoc --plugin=/Users/simon/go/bin/protoc-gen-sunnytool --sunnytool_out=plugins=rpcx,p=cli,pkg=user_cli:. ./user.proto
+protoc --plugin=/Users/simon/go/bin/protoc-gen-sunnytool --sunnytool_out=plugins=rpcx,p=cli,pkg=user_cli,step=cli:. ./user.proto
 
 //svr端的代码生成形式如下，其中p=svr 表示生成svr端代码, 代码生成默认放到当前工程的proto 目录中，不需要pkg 参数，有也忽略。
-protoc --plugin=/Users/simon/go/bin/protoc-gen-sunnytool --sunnytool_out=plugins=rpcx,p=svr:. ./user.proto
+protoc --plugin=/Users/simon/go/bin/protoc-gen-sunnytool --sunnytool_out=plugins=rpcx,p=svr,step=svr:. ./user.proto
 
 //在当前user目录执行生成svr代码如下
  github.com/kfcode/user

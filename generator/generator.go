@@ -1,39 +1,4 @@
-// Go support for Protocol Buffers - Google's data interchange format
-//
-// Copyright 2010 The Go Authors.  All rights reserved.
-// https://github.com/golang/protobuf
-//
-// Redistribution and use in source and binary forms, with or without
-// modification, are permitted provided that the following conditions are
-// met:
-//
-//     * Redistributions of source code must retain the above copyright
-// notice, this list of conditions and the following disclaimer.
-//     * Redistributions in binary form must reproduce the above
-// copyright notice, this list of conditions and the following disclaimer
-// in the documentation and/or other materials provided with the
-// distribution.
-//     * Neither the name of Google Inc. nor the names of its
-// contributors may be used to endorse or promote products derived from
-// this software without specific prior written permission.
-//
-// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
-// "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
-// LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
-// A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
-// OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
-// SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
-// LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
-// DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
-// THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-// (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-// OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-/*
-	The code generator for the plugin for the Google protocol buffer compiler.
-	It generates Go code from the protocol buffer description files read by the
-	main routine.
-*/
 package generator
 
 import (
@@ -309,14 +274,93 @@ func (d *FileDescriptor) goPackageOption() (impPath GoImportPath, pkg GoPackageN
 }
 
 // goFileName returns the output name for the generated Go file.
-func (d *FileDescriptor) goFileName(pathType pathType, plat map[string]string) string {
+func (d *FileDescriptor) goFileName(pathType pathType) string {
 	name := *d.Name
 	if ext := path.Ext(name); ext == ".proto" || ext == ".protodevel" {
 		name = name[:len(name)-len(ext)]
 	}
 	name += ".pb.go"
 
-	platform := getPlatFromDir(plat)
+	if pathType == pathTypeSourceRelative {
+		return name
+	}
+	// Does the file have a "go_package" option?
+	// If it does, it may override the filename.
+	if impPath, _, ok := d.goPackageOption(); ok && impPath != "" {
+		// Replace the existing dirname with the declared import path.
+		_, name = path.Split(name)
+		name = path.Join(string(impPath), name)
+		return name
+	}
+	return name
+}
+
+func (d *FileDescriptor) goCliFileName(pathType pathType, paraMap map[string]string) string {
+	name := *d.Name
+	if ext := path.Ext(name); ext == ".proto" || ext == ".protodevel" {
+		name = name[:len(name)-len(ext)]
+	}
+	name += ".pb.go"
+
+	//platform := getPlatFromDir(plat)
+	//filePath := ""
+	if pathType == pathTypeSourceRelative {
+		return name
+	}
+	// Does the file have a "go_package" option?
+	// If it does, it may override the filename.
+	/*
+	if impPath, _, ok := d.goPackageOption(); ok && impPath != "" {
+		// Replace the existing dirname with the declared import path.
+		_, name = path.Split(name)
+		name = path.Join(string(impPath), platform, name)
+		filePath = path.Join(string(impPath), platform)
+		if len(filePath) > 0 {
+			osCreateDir(filePath)
+		}
+		return name
+	}
+	filePath = platform
+	if len(filePath) > 0 {
+		osCreateDir(filePath)
+	}
+	name = path.Join(platform, name)
+	*/
+	return name
+}
+
+func (d *FileDescriptor) goCliGenFileName(pathType pathType, paraMap map[string]string) string {
+	name := *d.Name
+	if ext := path.Ext(name); ext == ".proto" || ext == ".protodevel" {
+		name = name[:len(name)-len(ext)]
+	}
+	name += ".pb.go"
+
+	if pathType == pathTypeSourceRelative {
+		return name
+	}
+	outPath := getCliFilePath(paraMap)
+	// Does the file have a "go_package" option?
+	// If it does, it may override the filename.
+	if impPath, _, ok := d.goPackageOption(); ok && impPath != "" {
+		// Replace the existing dirname with the declared import path.
+		outPath = path.Join(outPath, string(impPath))
+	}
+	osCreateDir(outPath)
+	_, name = path.Split(name)
+	name = path.Join(outPath, name)
+	//log.Printf("name:%v", name)
+	return name
+}
+
+func (d *FileDescriptor) goSvrFileName(pathType pathType, paraMap map[string]string) string {
+	name := *d.Name
+	if ext := path.Ext(name); ext == ".proto" || ext == ".protodevel" {
+		name = name[:len(name)-len(ext)]
+	}
+	name += ".pb.go"
+
+	platform := ""
 	filePath := ""
 	if pathType == pathTypeSourceRelative {
 		return name
@@ -341,19 +385,41 @@ func (d *FileDescriptor) goFileName(pathType pathType, plat map[string]string) s
 	return name
 }
 
-func (d *FileDescriptor) addExport(obj Object, sym symbol) {
-	d.exported[obj] = append(d.exported[obj], sym)
+func (d *FileDescriptor) goSvrGenGenFileName(pathType pathType, paraMap map[string]string) string {
+	name := *d.Name
+	if ext := path.Ext(name); ext == ".proto" || ext == ".protodevel" {
+		name = name[:len(name)-len(ext)]
+	}
+	name += ".pb.go"
+
+	platform := ""
+	filePath := ""
+	if pathType == pathTypeSourceRelative {
+		return name
+	}
+	// Does the file have a "go_package" option?
+	// If it does, it may override the filename.
+	if impPath, _, ok := d.goPackageOption(); ok && impPath != "" {
+		// Replace the existing dirname with the declared import path.
+		_, name = path.Split(name)
+		name = path.Join(string(impPath), platform, name)
+		filePath = path.Join(string(impPath), platform)
+		if len(filePath) > 0 {
+			osCreateDir(filePath)
+		}
+		return name
+	}
+	filePath = platform
+	if len(filePath) > 0 {
+		osCreateDir(filePath)
+	}
+	name = path.Join(platform, name)
+	return name
 }
 
-func getPlatFromDir(plat map[string]string) string {
-	platform, ok := plat["p"]
-	if ok && platform == "cli" {
-		return "genCli"
-	}
-	if ok && platform == "svr" {
-		return "proto"
-	}
-	return ""
+
+func (d *FileDescriptor) addExport(obj Object, sym symbol) {
+	d.exported[obj] = append(d.exported[obj], sym)
 }
 
 func osCreateDir(path string) {
@@ -363,6 +429,19 @@ func osCreateDir(path string) {
 		os.Exit(1)
 	}
 	return
+}
+
+func getCliFilePath(paraMap map[string]string) string {
+	goPath := os.Getenv("GOPATH")
+	if len(goPath) == 0 {
+		log.Print("can not find ENV GOPATH")
+		os.Exit(1)
+	}
+	path, name := path.Split(goPath)
+	if len(name) != 0 {
+		path = path + name + "/"
+	}
+	return path + "src/github.com/kfcode/clients/" + paraMap["sub"] + "/" + paraMap["pkg"] + "/"
 }
 
 // symbol is an interface representing an exported Go symbol.
@@ -1125,7 +1204,7 @@ func (g *Generator) GenerateAllFiles() {
 		if !g.writeOutput {
 			continue
 		}
-		fname := file.goFileName(g.pathType, g.Param)
+		fname := file.goFileName(g.pathType)
 		g.Response.File = append(g.Response.File, &plugin.CodeGeneratorResponse_File{
 			Name:    proto.String(fname),
 			Content: proto.String(g.String()),
@@ -1134,7 +1213,146 @@ func (g *Generator) GenerateAllFiles() {
 			// Store the generated code annotations in text, as the protoc plugin protocol requires that
 			// strings contain valid UTF-8.
 			g.Response.File = append(g.Response.File, &plugin.CodeGeneratorResponse_File{
-				Name:    proto.String(file.goFileName(g.pathType, g.Param) + ".meta"),
+				Name:    proto.String(file.goFileName(g.pathType) + ".meta"),
+				Content: proto.String(proto.CompactTextString(&descriptor.GeneratedCodeInfo{Annotation: g.annotations})),
+			})
+		}
+	}
+}
+
+
+func (g *Generator) GenerateCliAllFiles() {
+
+	// Initialize the plugins
+	for _, p := range plugins {
+		p.Init(g)
+	}
+	// Generate the output. The generator runs for every file, even the files
+	// that we don't generate output for, so that we can collate the full list
+	// of exported symbols to support public imports.
+	genFileMap := make(map[*FileDescriptor]bool, len(g.genFiles))
+	for _, file := range g.genFiles {
+		genFileMap[file] = true
+	}
+	for _, file := range g.allFiles {
+		g.Reset()
+		g.annotations = nil
+		g.writeOutput = genFileMap[file]
+		g.generateCli(file)
+		if !g.writeOutput {
+			continue
+		}
+		fname := file.goCliFileName(g.pathType, g.Param)
+		g.Response.File = append(g.Response.File, &plugin.CodeGeneratorResponse_File{
+			Name:    proto.String(fname),
+			Content: proto.String(g.String()),
+		})
+		if g.annotateCode {
+			// Store the generated code annotations in text, as the protoc plugin protocol requires that
+			// strings contain valid UTF-8.
+			g.Response.File = append(g.Response.File, &plugin.CodeGeneratorResponse_File{
+				Name:    proto.String(file.goCliFileName(g.pathType, g.Param) + ".meta"),
+				Content: proto.String(proto.CompactTextString(&descriptor.GeneratedCodeInfo{Annotation: g.annotations})),
+			})
+		}
+	}
+}
+
+
+func (g *Generator) GenerateCliGenAllFiles() {
+	// Generate the output. The generator runs for every file, even the files
+	// that we don't generate output for, so that we can collate the full list
+	// of exported symbols to support public imports.
+	genFileMap := make(map[*FileDescriptor]bool, len(g.genFiles))
+	for _, file := range g.genFiles {
+		genFileMap[file] = true
+	}
+	for _, file := range g.allFiles {
+		g.Reset()
+		g.annotations = nil
+		g.writeOutput = genFileMap[file]
+		g.generateCliGen(file)
+		if !g.writeOutput {
+			continue
+		}
+		fname := file.goCliGenFileName(g.pathType, g.Param)
+		//写入文件
+		fileFd, err := os.Create(fname)
+		if err != nil || fileFd == nil {
+			g.Fail("create file failed")
+		}
+		_, err = fileFd.Write([]byte(g.String()))
+		if err != nil {
+			g.Fail("write file failed")
+		}
+		fileFd.Close()
+	}
+}
+
+func (g *Generator) GenerateSvrAllFiles() {
+	// Initialize the plugins
+	for _, p := range plugins {
+		p.Init(g)
+	}
+	// Generate the output. The generator runs for every file, even the files
+	// that we don't generate output for, so that we can collate the full list
+	// of exported symbols to support public imports.
+	genFileMap := make(map[*FileDescriptor]bool, len(g.genFiles))
+	for _, file := range g.genFiles {
+		genFileMap[file] = true
+	}
+	for _, file := range g.allFiles {
+		g.Reset()
+		g.annotations = nil
+		g.writeOutput = genFileMap[file]
+		g.generateSvr(file)
+		if !g.writeOutput {
+			continue
+		}
+		fname := file.goSvrFileName(g.pathType, g.Param)
+		g.Response.File = append(g.Response.File, &plugin.CodeGeneratorResponse_File{
+			Name:    proto.String(fname),
+			Content: proto.String(g.String()),
+		})
+		if g.annotateCode {
+			// Store the generated code annotations in text, as the protoc plugin protocol requires that
+			// strings contain valid UTF-8.
+			g.Response.File = append(g.Response.File, &plugin.CodeGeneratorResponse_File{
+				Name:    proto.String(file.goSvrFileName(g.pathType, g.Param) + ".meta"),
+				Content: proto.String(proto.CompactTextString(&descriptor.GeneratedCodeInfo{Annotation: g.annotations})),
+			})
+		}
+	}
+}
+
+
+func (g *Generator) GenerateSvrGenGenAllFiles() {
+
+	// Generate the output. The generator runs for every file, even the files
+	// that we don't generate output for, so that we can collate the full list
+	// of exported symbols to support public imports.
+	genFileMap := make(map[*FileDescriptor]bool, len(g.genFiles))
+	for _, file := range g.genFiles {
+		genFileMap[file] = true
+	}
+	for _, file := range g.allFiles {
+		g.Reset()
+		g.annotations = nil
+		g.writeOutput = genFileMap[file]
+		g.generateSvrGen(file)
+		if !g.writeOutput {
+			continue
+		}
+		fname := file.goSvrGenGenFileName(g.pathType, g.Param)
+		g.Response.File = append(g.Response.File, &plugin.CodeGeneratorResponse_File{
+			Name:    proto.String(fname),
+			Content: proto.String(g.String()),
+		})
+		if g.annotateCode {
+			// Store the generated code annotations in text, as the protoc plugin protocol requires that
+			// strings contain valid UTF-8.
+			g.Response.File = append(g.Response.File, &plugin.CodeGeneratorResponse_File{
+				Name:    proto.String(file.goSvrGenGenFileName(g.pathType, g.Param) + ".meta"),
 				Content: proto.String(proto.CompactTextString(&descriptor.GeneratedCodeInfo{Annotation: g.annotations})),
 			})
 		}
@@ -1188,6 +1406,393 @@ func (g *Generator) generate(file *FileDescriptor) {
 
 	// Run the plugins before the imports so we know which imports are necessary.
 	g.runPlugins(file)
+
+	// Generate header and imports last, though they appear first in the output.
+	rem := g.Buffer
+	remAnno := g.annotations
+	g.Buffer = new(bytes.Buffer)
+	g.annotations = nil
+	g.generateHeader()
+	g.generateImports()
+	if !g.writeOutput {
+		return
+	}
+	// Adjust the offsets for annotations displaced by the header and imports.
+	for _, anno := range remAnno {
+		*anno.Begin += int32(g.Len())
+		*anno.End += int32(g.Len())
+		g.annotations = append(g.annotations, anno)
+	}
+	g.Write(rem.Bytes())
+
+	// Reformat generated code and patch annotation locations.
+	fset := token.NewFileSet()
+	original := g.Bytes()
+	if g.annotateCode {
+		// make a copy independent of g; we'll need it after Reset.
+		original = append([]byte(nil), original...)
+	}
+	fileAST, err := parser.ParseFile(fset, "", original, parser.ParseComments)
+	if err != nil {
+		// Print out the bad code with line numbers.
+		// This should never happen in practice, but it can while changing generated code,
+		// so consider this a debugging aid.
+		var src bytes.Buffer
+		s := bufio.NewScanner(bytes.NewReader(original))
+		for line := 1; s.Scan(); line++ {
+			fmt.Fprintf(&src, "%5d\t%s\n", line, s.Bytes())
+		}
+		g.Fail("bad Go source code was generated:", err.Error(), "\n"+src.String())
+	}
+	ast.SortImports(fset, fileAST)
+	g.Reset()
+	err = (&printer.Config{Mode: printer.TabIndent | printer.UseSpaces, Tabwidth: 8}).Fprint(g, fset, fileAST)
+	if err != nil {
+		g.Fail("generated Go source code could not be reformatted:", err.Error())
+	}
+	if g.annotateCode {
+		m, err := remap.Compute(original, g.Bytes())
+		if err != nil {
+			g.Fail("formatted generated Go source code could not be mapped back to the original code:", err.Error())
+		}
+		for _, anno := range g.annotations {
+			new, ok := m.Find(int(*anno.Begin), int(*anno.End))
+			if !ok {
+				g.Fail("span in formatted generated Go source code could not be mapped back to the original code")
+			}
+			*anno.Begin = int32(new.Pos)
+			*anno.End = int32(new.End)
+		}
+	}
+}
+
+func (g *Generator) generateCli(file *FileDescriptor) {
+	g.file = file
+	g.usedPackages = make(map[GoImportPath]bool)
+	g.packageNames = make(map[GoImportPath]GoPackageName)
+	g.usedPackageNames = make(map[GoPackageName]bool)
+	g.addedImports = make(map[GoImportPath]bool)
+	for name := range globalPackageNames {
+		g.usedPackageNames[name] = true
+	}
+
+	g.P("// This is a compile-time assertion to ensure that this generated file")
+	g.P("// is compatible with the proto package it is being compiled against.")
+	g.P("// A compilation error at this line likely means your copy of the")
+	g.P("// proto package needs to be updated.")
+	g.P("const _ = ", g.Pkg["proto"], ".ProtoPackageIsVersion", generatedCodeVersion, " // please upgrade the proto package")
+	g.P()
+
+	for _, td := range g.file.imp {
+		g.generateImported(td)
+	}
+	for _, enum := range g.file.enum {
+		g.generateEnum(enum)
+	}
+	for _, desc := range g.file.desc {
+		// Don't generate virtual messages for maps.
+		if desc.GetOptions().GetMapEntry() {
+			continue
+		}
+		g.generateMessage(desc)
+	}
+	for _, ext := range g.file.ext {
+		g.generateExtension(ext)
+	}
+	g.generateInitFunction()
+	g.generateFileDescriptor(file)
+
+	// Run the plugins before the imports so we know which imports are necessary.
+	g.runPlugins(file)
+
+	// Generate header and imports last, though they appear first in the output.
+	rem := g.Buffer
+	remAnno := g.annotations
+	g.Buffer = new(bytes.Buffer)
+	g.annotations = nil
+	g.generateHeader()
+	g.generateImports()
+	if !g.writeOutput {
+		return
+	}
+	// Adjust the offsets for annotations displaced by the header and imports.
+	for _, anno := range remAnno {
+		*anno.Begin += int32(g.Len())
+		*anno.End += int32(g.Len())
+		g.annotations = append(g.annotations, anno)
+	}
+	g.Write(rem.Bytes())
+
+	// Reformat generated code and patch annotation locations.
+	fset := token.NewFileSet()
+	original := g.Bytes()
+	if g.annotateCode {
+		// make a copy independent of g; we'll need it after Reset.
+		original = append([]byte(nil), original...)
+	}
+	fileAST, err := parser.ParseFile(fset, "", original, parser.ParseComments)
+	if err != nil {
+		// Print out the bad code with line numbers.
+		// This should never happen in practice, but it can while changing generated code,
+		// so consider this a debugging aid.
+		var src bytes.Buffer
+		s := bufio.NewScanner(bytes.NewReader(original))
+		for line := 1; s.Scan(); line++ {
+			fmt.Fprintf(&src, "%5d\t%s\n", line, s.Bytes())
+		}
+		g.Fail("bad Go source code was generated:", err.Error(), "\n"+src.String())
+	}
+	ast.SortImports(fset, fileAST)
+	g.Reset()
+	err = (&printer.Config{Mode: printer.TabIndent | printer.UseSpaces, Tabwidth: 8}).Fprint(g, fset, fileAST)
+	if err != nil {
+		g.Fail("generated Go source code could not be reformatted:", err.Error())
+	}
+	if g.annotateCode {
+		m, err := remap.Compute(original, g.Bytes())
+		if err != nil {
+			g.Fail("formatted generated Go source code could not be mapped back to the original code:", err.Error())
+		}
+		for _, anno := range g.annotations {
+			new, ok := m.Find(int(*anno.Begin), int(*anno.End))
+			if !ok {
+				g.Fail("span in formatted generated Go source code could not be mapped back to the original code")
+			}
+			*anno.Begin = int32(new.Pos)
+			*anno.End = int32(new.End)
+		}
+	}
+}
+
+func (g *Generator) generateCliGen(file *FileDescriptor) {
+	g.file = file
+	g.usedPackages = make(map[GoImportPath]bool)
+	g.packageNames = make(map[GoImportPath]GoPackageName)
+	g.usedPackageNames = make(map[GoPackageName]bool)
+	g.addedImports = make(map[GoImportPath]bool)
+	for name := range globalPackageNames {
+		g.usedPackageNames[name] = true
+	}
+
+	g.P("// This is a compile-time assertion to ensure that this generated file")
+	g.P("// is compatible with the proto package it is being compiled against.")
+	g.P("// A compilation error at this line likely means your copy of the")
+	g.P("// proto package needs to be updated.")
+	g.P("const _ = ", g.Pkg["proto"], ".ProtoPackageIsVersion", generatedCodeVersion, " // please upgrade the proto package")
+	g.P()
+
+	for _, td := range g.file.imp {
+		g.generateImported(td)
+	}
+	for _, enum := range g.file.enum {
+		g.generateEnum(enum)
+	}
+	for _, desc := range g.file.desc {
+		// Don't generate virtual messages for maps.
+		if desc.GetOptions().GetMapEntry() {
+			continue
+		}
+		g.generateMessage(desc)
+	}
+	for _, ext := range g.file.ext {
+		g.generateExtension(ext)
+	}
+	g.generateInitFunction()
+	g.generateFileDescriptor(file)
+
+	// Generate header and imports last, though they appear first in the output.
+	rem := g.Buffer
+	remAnno := g.annotations
+	g.Buffer = new(bytes.Buffer)
+	g.annotations = nil
+	file.packageName = GoPackageName(g.Param["pkg"])
+	g.generateHeader()
+	g.generateImports()
+	if !g.writeOutput {
+		return
+	}
+	// Adjust the offsets for annotations displaced by the header and imports.
+	for _, anno := range remAnno {
+		*anno.Begin += int32(g.Len())
+		*anno.End += int32(g.Len())
+		g.annotations = append(g.annotations, anno)
+	}
+	g.Write(rem.Bytes())
+
+	// Reformat generated code and patch annotation locations.
+	fset := token.NewFileSet()
+	original := g.Bytes()
+	if g.annotateCode {
+		// make a copy independent of g; we'll need it after Reset.
+		original = append([]byte(nil), original...)
+	}
+	fileAST, err := parser.ParseFile(fset, "", original, parser.ParseComments)
+	if err != nil {
+		// Print out the bad code with line numbers.
+		// This should never happen in practice, but it can while changing generated code,
+		// so consider this a debugging aid.
+		var src bytes.Buffer
+		s := bufio.NewScanner(bytes.NewReader(original))
+		for line := 1; s.Scan(); line++ {
+			fmt.Fprintf(&src, "%5d\t%s\n", line, s.Bytes())
+		}
+		g.Fail("bad Go source code was generated:", err.Error(), "\n"+src.String())
+	}
+	ast.SortImports(fset, fileAST)
+	g.Reset()
+	err = (&printer.Config{Mode: printer.TabIndent | printer.UseSpaces, Tabwidth: 8}).Fprint(g, fset, fileAST)
+	if err != nil {
+		g.Fail("generated Go source code could not be reformatted:", err.Error())
+	}
+	if g.annotateCode {
+		m, err := remap.Compute(original, g.Bytes())
+		if err != nil {
+			g.Fail("formatted generated Go source code could not be mapped back to the original code:", err.Error())
+		}
+		for _, anno := range g.annotations {
+			new, ok := m.Find(int(*anno.Begin), int(*anno.End))
+			if !ok {
+				g.Fail("span in formatted generated Go source code could not be mapped back to the original code")
+			}
+			*anno.Begin = int32(new.Pos)
+			*anno.End = int32(new.End)
+		}
+	}
+}
+
+func (g *Generator) generateSvr(file *FileDescriptor) {
+	g.file = file
+	g.usedPackages = make(map[GoImportPath]bool)
+	g.packageNames = make(map[GoImportPath]GoPackageName)
+	g.usedPackageNames = make(map[GoPackageName]bool)
+	g.addedImports = make(map[GoImportPath]bool)
+	for name := range globalPackageNames {
+		g.usedPackageNames[name] = true
+	}
+
+	g.P("// This is a compile-time assertion to ensure that this generated file")
+	g.P("// is compatible with the proto package it is being compiled against.")
+	g.P("// A compilation error at this line likely means your copy of the")
+	g.P("// proto package needs to be updated.")
+	g.P("const _ = ", g.Pkg["proto"], ".ProtoPackageIsVersion", generatedCodeVersion, " // please upgrade the proto package")
+	g.P()
+
+	for _, td := range g.file.imp {
+		g.generateImported(td)
+	}
+	for _, enum := range g.file.enum {
+		g.generateEnum(enum)
+	}
+	for _, desc := range g.file.desc {
+		// Don't generate virtual messages for maps.
+		if desc.GetOptions().GetMapEntry() {
+			continue
+		}
+		g.generateMessage(desc)
+	}
+	for _, ext := range g.file.ext {
+		g.generateExtension(ext)
+	}
+	g.generateInitFunction()
+	g.generateFileDescriptor(file)
+
+	// Run the plugins before the imports so we know which imports are necessary.
+	g.runPlugins(file)
+
+	// Generate header and imports last, though they appear first in the output.
+	rem := g.Buffer
+	remAnno := g.annotations
+	g.Buffer = new(bytes.Buffer)
+	g.annotations = nil
+	g.generateHeader()
+	g.generateImports()
+	if !g.writeOutput {
+		return
+	}
+	// Adjust the offsets for annotations displaced by the header and imports.
+	for _, anno := range remAnno {
+		*anno.Begin += int32(g.Len())
+		*anno.End += int32(g.Len())
+		g.annotations = append(g.annotations, anno)
+	}
+	g.Write(rem.Bytes())
+
+	// Reformat generated code and patch annotation locations.
+	fset := token.NewFileSet()
+	original := g.Bytes()
+	if g.annotateCode {
+		// make a copy independent of g; we'll need it after Reset.
+		original = append([]byte(nil), original...)
+	}
+	fileAST, err := parser.ParseFile(fset, "", original, parser.ParseComments)
+	if err != nil {
+		// Print out the bad code with line numbers.
+		// This should never happen in practice, but it can while changing generated code,
+		// so consider this a debugging aid.
+		var src bytes.Buffer
+		s := bufio.NewScanner(bytes.NewReader(original))
+		for line := 1; s.Scan(); line++ {
+			fmt.Fprintf(&src, "%5d\t%s\n", line, s.Bytes())
+		}
+		g.Fail("bad Go source code was generated:", err.Error(), "\n"+src.String())
+	}
+	ast.SortImports(fset, fileAST)
+	g.Reset()
+	err = (&printer.Config{Mode: printer.TabIndent | printer.UseSpaces, Tabwidth: 8}).Fprint(g, fset, fileAST)
+	if err != nil {
+		g.Fail("generated Go source code could not be reformatted:", err.Error())
+	}
+	if g.annotateCode {
+		m, err := remap.Compute(original, g.Bytes())
+		if err != nil {
+			g.Fail("formatted generated Go source code could not be mapped back to the original code:", err.Error())
+		}
+		for _, anno := range g.annotations {
+			new, ok := m.Find(int(*anno.Begin), int(*anno.End))
+			if !ok {
+				g.Fail("span in formatted generated Go source code could not be mapped back to the original code")
+			}
+			*anno.Begin = int32(new.Pos)
+			*anno.End = int32(new.End)
+		}
+	}
+}
+
+func (g *Generator) generateSvrGen(file *FileDescriptor) {
+	g.file = file
+	g.usedPackages = make(map[GoImportPath]bool)
+	g.packageNames = make(map[GoImportPath]GoPackageName)
+	g.usedPackageNames = make(map[GoPackageName]bool)
+	g.addedImports = make(map[GoImportPath]bool)
+	for name := range globalPackageNames {
+		g.usedPackageNames[name] = true
+	}
+
+	g.P("// This is a compile-time assertion to ensure that this generated file")
+	g.P("// is compatible with the proto package it is being compiled against.")
+	g.P("// A compilation error at this line likely means your copy of the")
+	g.P("// proto package needs to be updated.")
+	g.P("const _ = ", g.Pkg["proto"], ".ProtoPackageIsVersion", generatedCodeVersion, " // please upgrade the proto package")
+	g.P()
+
+	for _, td := range g.file.imp {
+		g.generateImported(td)
+	}
+	for _, enum := range g.file.enum {
+		g.generateEnum(enum)
+	}
+	for _, desc := range g.file.desc {
+		// Don't generate virtual messages for maps.
+		if desc.GetOptions().GetMapEntry() {
+			continue
+		}
+		g.generateMessage(desc)
+	}
+	for _, ext := range g.file.ext {
+		g.generateExtension(ext)
+	}
+	g.generateInitFunction()
+	g.generateFileDescriptor(file)
 
 	// Generate header and imports last, though they appear first in the output.
 	rem := g.Buffer
