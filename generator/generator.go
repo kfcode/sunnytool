@@ -349,7 +349,6 @@ func (d *FileDescriptor) goCliGenFileName(pathType pathType, paraMap map[string]
 	osCreateDir(outPath)
 	_, name = path.Split(name)
 	name = path.Join(outPath, name)
-	//log.Printf("name:%v", name)
 	return name
 }
 
@@ -392,28 +391,19 @@ func (d *FileDescriptor) goSvrGenGenFileName(pathType pathType, paraMap map[stri
 	}
 	name += ".pb.go"
 
-	platform := ""
-	filePath := ""
 	if pathType == pathTypeSourceRelative {
 		return name
 	}
+	outPath := getSvrGenFilePath()
 	// Does the file have a "go_package" option?
 	// If it does, it may override the filename.
 	if impPath, _, ok := d.goPackageOption(); ok && impPath != "" {
 		// Replace the existing dirname with the declared import path.
-		_, name = path.Split(name)
-		name = path.Join(string(impPath), platform, name)
-		filePath = path.Join(string(impPath), platform)
-		if len(filePath) > 0 {
-			osCreateDir(filePath)
-		}
-		return name
+		outPath = path.Join(outPath, string(impPath))
 	}
-	filePath = platform
-	if len(filePath) > 0 {
-		osCreateDir(filePath)
-	}
-	name = path.Join(platform, name)
+	osCreateDir(outPath)
+	_, name = path.Split(name)
+	name = path.Join(outPath, name)
 	return name
 }
 
@@ -442,6 +432,14 @@ func getCliFilePath(paraMap map[string]string) string {
 		path = path + name + "/"
 	}
 	return path + "src/github.com/kfcode/clients/" + paraMap["sub"] + "/" + paraMap["pkg"] + "/"
+}
+
+func getSvrGenFilePath() string {
+	return "./proto/"
+}
+
+func getSvrFilePath() string {
+	return "./"
 }
 
 // symbol is an interface representing an exported Go symbol.
@@ -1271,11 +1269,11 @@ func (g *Generator) GenerateCliGenAllFiles() {
 		g.Reset()
 		g.annotations = nil
 		g.writeOutput = genFileMap[file]
-		g.generateCliGen(file)
+		g.generateSvrGen(file)
 		if !g.writeOutput {
 			continue
 		}
-		fname := file.goCliGenFileName(g.pathType, g.Param)
+		fname := file.goSvrGenGenFileName(g.pathType, g.Param)
 		//写入文件
 		fileFd, err := os.Create(fname)
 		if err != nil || fileFd == nil {
@@ -1344,18 +1342,16 @@ func (g *Generator) GenerateSvrGenGenAllFiles() {
 			continue
 		}
 		fname := file.goSvrGenGenFileName(g.pathType, g.Param)
-		g.Response.File = append(g.Response.File, &plugin.CodeGeneratorResponse_File{
-			Name:    proto.String(fname),
-			Content: proto.String(g.String()),
-		})
-		if g.annotateCode {
-			// Store the generated code annotations in text, as the protoc plugin protocol requires that
-			// strings contain valid UTF-8.
-			g.Response.File = append(g.Response.File, &plugin.CodeGeneratorResponse_File{
-				Name:    proto.String(file.goSvrGenGenFileName(g.pathType, g.Param) + ".meta"),
-				Content: proto.String(proto.CompactTextString(&descriptor.GeneratedCodeInfo{Annotation: g.annotations})),
-			})
+		//写入文件
+		fileFd, err := os.Create(fname)
+		if err != nil || fileFd == nil {
+			g.Fail("create file failed")
 		}
+		_, err = fileFd.Write([]byte(g.String()))
+		if err != nil {
+			g.Fail("write file failed")
+		}
+		fileFd.Close()
 	}
 }
 
